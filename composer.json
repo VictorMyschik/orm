@@ -1,0 +1,19 @@
+{
+    "name": "myschik/orm",
+    "description": "Caching models",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Victor Myschik",
+            "email": "allximik50@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "Myschik\\ORM\\": ""
+        }
+    },
+    "require": {}
+}
