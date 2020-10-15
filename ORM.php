@@ -2,7 +2,6 @@
 
 namespace Myschik\ORM;
 
-use App\Helpers\MrCacheHelper;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -26,12 +25,21 @@ class ORM extends Model
     return with(new static)->within;
   }
 
+
   /**
-   * Удалить все записи в таблице
+   * Get object from cache by id or call
+   *
+   * @param int $id
+   * @param string $table
+   * @param callable $object
+   * @return mixed
    */
-  public static function AllDelete()
+  private static function GetCachedObject(int $id, string $table, callable $object): ?object
   {
-    DB::table(static::getTableName())->truncate();
+    $cache_key = $table . '_' . $id;
+    return Cache::rememberForever($cache_key, function () use ($object) {
+      return $object();
+    });
   }
 
   /**
@@ -55,7 +63,7 @@ class ORM extends Model
     // If field 'id' -> can save in cache
     if ($field == 'id')
     {
-      $result = MrCacheHelper::GetCachedObject((int)$value, self::getTableName(), function () use ($class_name, $field, $value) {
+      $result = self::GetCachedObject((int)$value, self::getTableName(), function () use ($class_name, $field, $value) {
         return $class_name::where($field, $value)->get()->last();
       });
     }
@@ -134,7 +142,7 @@ class ORM extends Model
    *
    * @return string
    */
-  public function GetCachedKey(): string
+  protected function GetCachedKey(): string
   {
     return (static::getTableName() . '_' . $this->attributes['id']);
   }
@@ -216,5 +224,4 @@ class ORM extends Model
 
     return true;
   }
-
 }
