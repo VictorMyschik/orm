@@ -181,7 +181,7 @@ class ORM extends Model
       $this->after_save();
     }
 
-    $this->flush();
+    $this->self_flush();
 
     return $this->id();
   }
