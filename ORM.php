@@ -115,7 +115,7 @@ class ORM extends Model
 
   public function self_flush()
   {
-    $list = Cache::get(static::getTableName());
+    $list = Cache::get(static::getTableName()) ?: array();
     $value = $this->attributes['id'];
 
     foreach ($list as $key => $item)
