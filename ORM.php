@@ -176,9 +176,14 @@ class ORM extends Model
 
     $this->save();
 
-    if ($skipAffectedCache && method_exists($this, 'after_save'))
+    if (method_exists($this, 'after_save'))
     {
       $this->after_save();
+    }
+
+    if ($skipAffectedCache && method_exists($this, 'flush'))
+    {
+      $this->flush();
     }
 
     $this->self_flush();
