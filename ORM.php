@@ -167,7 +167,7 @@ class ORM extends Model
   public $timestamps = false;
 
 
-  public function save_mr(bool $skipAffectedCache = false): ?int
+  public function save_mr(bool $skipAffectedCache = true): ?int
   {
     if (method_exists($this, 'before_save'))
     {
