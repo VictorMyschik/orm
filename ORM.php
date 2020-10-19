@@ -206,18 +206,18 @@ class ORM extends Model
     return Cache::get($this->GetCachedKey());
   }
 
-  public function delete_mr(): bool
+  public function delete_mr(bool $skipAffectedCache = true): bool
   {
     if (method_exists($this, 'before_delete'))
     {
       $this->before_delete();
     }
 
-
     $this->delete();
+
     $this->self_flush();
 
-    if (method_exists($this, 'after_delete'))
+    if ($skipAffectedCache && method_exists($this, 'after_delete'))
     {
       $this->after_delete();
     }
