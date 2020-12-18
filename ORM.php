@@ -75,13 +75,17 @@ class ORM extends Model
         $result_data = DB::table(self::getTableName())->select(['*'])->where('id', $value)->first();
         foreach ($result_data as $key => $value)
         {
-          $properties[$key] = $value;
+          if(!is_null($value))
+          {
+            $properties[$key] = $value;
+          }
         }
+
         return $properties ?? null;
       });
 
       $object = new $class_name();
-
+      $object->exists = true;
       $object->attributes = $result;
       $object->original = $result;
     }
@@ -102,7 +106,7 @@ class ORM extends Model
         if ($result)
         {
           $object = new $class_name();
-
+          $object->exists = true;
           $object->attributes = $result;
           $object->original = $result;
 
