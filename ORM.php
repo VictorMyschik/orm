@@ -60,16 +60,34 @@ class ORM extends Model
     }
 
     $class_name = static::class;
+
+    $hash = hash('crc32', $class_name . '_' . $value);
+
+    if (isset(self::$objects_loaded_list[$hash]))
+    {
+      return self::$objects_loaded_list[$hash];
+    }
+
     // If field 'id' -> can save in cache
     if ($field == 'id')
     {
-      $result = self::GetCachedObject((int)$value, self::getTableName(), function () use ($class_name, $field, $value) {
-        return $class_name::where($field, $value)->get()->last();
+      $result = self::GetCachedObject((int)$value, $class_name::getTableName(), function () use ($class_name, $field, $value) {
+        $result_data = DB::table(self::getTableName())->select(['*'])->where('id', $value)->first();
+        foreach ($result_data as $key => $value)
+        {
+          $properties[$key] = $value;
+        }
+        return $properties ?? null;
       });
+
+      $object = new $class_name();
+
+      $object->attributes = $result;
+      $object->original = $result;
     }
     else
     {
-      $key_list = Cache::get(self::getTableName()) ?: array();
+      $key_list = Cache::get($class_name::getTableName()) ?: array();
 
       $hash = hash('crc32', $field . '_' . $value);
 
@@ -80,19 +98,25 @@ class ORM extends Model
       else
       {
         $result = $class_name::where($field, $value)->get()->last();
-        $key_list[$hash] = $result ? $result->id() : null;
 
-        self::rewrite(self::getTableName(), $key_list);
+        if ($result)
+        {
+          $object = new $class_name();
+
+          $object->attributes = $result;
+          $object->original = $result;
+
+          $key_list[$hash] = $result->id();
+          self::rewrite(self::getTableName(), $key_list);
+        }
       }
     }
 
-    // Load relation models
-    if ($relation)
-    {
-      $result->load($class_name::getMrRelation());
-    }
+    $hash = hash('crc32', $class_name . '_' . $object->id());
 
-    return $result;
+    self::$objects_loaded_list[$hash] = $object;
+
+    return $object;
   }
 
   /**
