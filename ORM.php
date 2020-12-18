@@ -52,20 +52,23 @@ class ORM extends Model
    */
   public static function loadBy(?string $value, string $field = 'id', bool $relation = false)
   {
-    $result = null;
+        $result = null;
 
     if (!$value)
     {
       return null;
     }
 
+    $object = null;
     $class_name = static::class;
 
-    $hash = hash('crc32', $class_name . '_' . $value);
+    // local cache
+    $local_hash_key = $class_name . '_' . $field . '_' . $value;//hash('crc32', $class_name . '_' . $field . '_' .
+   // $value);
 
-    if (isset(self::$objects_loaded_list[$hash]))
+    if (isset(self::$objects_loaded_list[$local_hash_key]))
     {
-      return self::$objects_loaded_list[$hash];
+      return self::$objects_loaded_list[$local_hash_key];
     }
 
     // If field 'id' -> can save in cache
@@ -91,34 +94,38 @@ class ORM extends Model
     }
     else
     {
-      $key_list = Cache::get($class_name::getTableName()) ?: array();
+      $redis_keys_list = Cache::get($class_name::getTableName()) ?: array();
 
-      $hash = hash('crc32', $field . '_' . $value);
+      $key_hash = $field . '_' . $value;//hash('crc32', $field . '_' . $value);
 
-      if (isset($key_list[$hash]))
+      if (isset($redis_keys_list[$key_hash]))
       {
-        $result = self::loadBy($key_list[$hash]);
+        $object = self::loadBy($redis_keys_list[$key_hash]);// загрузка по id
       }
       else
       {
-        $result = $class_name::where($field, $value)->get()->last();
-
-        if ($result)
+        if ($result_data = DB::table(self::getTableName())->select(['*'])->where($field, $value)->first())
         {
+          foreach ($result_data as $key => $value)
+          {
+            if(!is_null($value))
+            {
+              $properties[$key] = $value;
+            }
+          }
+
           $object = new $class_name();
           $object->exists = true;
-          $object->attributes = $result;
-          $object->original = $result;
+          $object->attributes = $properties;
+          $object->original = $properties;
 
-          $key_list[$hash] = $result->id();
-          self::rewrite(self::getTableName(), $key_list);
+          $redis_keys_list[$key_hash] = $object->id();
+          self::rewrite(self::getTableName(), $redis_keys_list);
         }
       }
     }
 
-    $hash = hash('crc32', $class_name . '_' . $object->id());
-
-    self::$objects_loaded_list[$hash] = $object;
+    self::$objects_loaded_list[$local_hash_key] = $object;
 
     return $object;
   }
