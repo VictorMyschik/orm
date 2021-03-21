@@ -27,7 +27,7 @@ class ORM extends Model
 
 
   /**
-   * Get object from cache by id or call
+   * Get object from cache by id
    *
    * @param int $id
    * @param string $table
