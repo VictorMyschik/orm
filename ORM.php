@@ -1,6 +1,6 @@
 <?php
 
-namespace Myschik\ORM;
+namespace App\Models\ORM;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -25,36 +25,37 @@ class ORM extends Model
     return with(new static)->within;
   }
 
+  public static $objects_loaded_list = array();
 
   /**
-   * Get object from cache by id
+   * Get object from cache by id or call
    *
    * @param int $id
    * @param string $table
    * @param callable $object
-   * @return mixed
    */
-  private static function GetCachedObject(int $id, string $table, callable $object): ?object
+  private static function GetCachedObject(int $id, string $table, callable $object)
   {
     $cache_key = $table . '_' . $id;
-    return Cache::rememberForever($cache_key, function () use ($object) {
-      return $object();
-    });
+
+    // return Cache::remember($cache_key, 300, function () use ($object) {
+    return $object();
+    //});
   }
 
   /**
    * Load object (get last result)
    *
-   * @param string|null $value
+   * @param string $value
    * @param string $field
    * @param bool $relation // Догрузить связи
    * @return static|object|null
    */
-  public static function loadBy(?string $value, string $field = 'id', bool $relation = false)
+  public static function loadBy(?string $value, string $field = 'id', bool $relation = false): ?object
   {
-        $result = null;
+    $result = null;
 
-    if (!$value)
+    if(!$value)
     {
       return null;
     }
@@ -63,50 +64,32 @@ class ORM extends Model
     $class_name = static::class;
 
     // local cache
-    $local_hash_key = $class_name . '_' . $field . '_' . $value;//hash('crc32', $class_name . '_' . $field . '_' .
-   // $value);
+    $local_hash_key = hash('crc32', $class_name . '_' . $field . '_' . $value);
 
-    if (isset(self::$objects_loaded_list[$local_hash_key]))
+    if(isset(self::$objects_loaded_list[$local_hash_key]))
     {
       return self::$objects_loaded_list[$local_hash_key];
     }
 
     // If field 'id' -> can save in cache
-    if ($field == 'id')
+    if($field == 'id')
     {
-      $result = self::GetCachedObject((int)$value, $class_name::getTableName(), function () use ($class_name, $field, $value) {
-        $result_data = DB::table(self::getTableName())->select(['*'])->where('id', $value)->first();
-        foreach ($result_data as $key => $value)
-        {
-          if(!is_null($value))
-          {
-            $properties[$key] = $value;
-          }
-        }
-
-        return $properties ?? null;
-      });
-
-      $object = new $class_name();
-      $object->exists = true;
-      $object->attributes = $result;
-      $object->original = $result;
+      $object = $class_name::find($value);
     }
     else
     {
       $redis_keys_list = Cache::get($class_name::getTableName()) ?: array();
+      $redis_key_hash = hash('crc32', $field . '_' . $value);
 
-      $key_hash = $field . '_' . $value;//hash('crc32', $field . '_' . $value);
-
-      if (isset($redis_keys_list[$key_hash]))
+      if(isset($redis_keys_list[$redis_key_hash]))
       {
-        $object = self::loadBy($redis_keys_list[$key_hash]);// загрузка по id
+        $object = self::loadBy($redis_keys_list[$redis_key_hash]);// загрузка по id
       }
       else
       {
-        if ($result_data = DB::table(self::getTableName())->select(['*'])->where($field, $value)->first())
+        if($result_data = DB::table(self::getTableName())->select(['*'])->where($field, $value)->first())
         {
-          foreach ($result_data as $key => $value)
+          foreach($result_data as $key => $value)
           {
             if(!is_null($value))
             {
@@ -119,7 +102,7 @@ class ORM extends Model
           $object->attributes = $properties;
           $object->original = $properties;
 
-          $redis_keys_list[$key_hash] = $object->id();
+          $redis_keys_list[$redis_key_hash] = $object->id();
           self::rewrite(self::getTableName(), $redis_keys_list);
         }
       }
@@ -128,6 +111,16 @@ class ORM extends Model
     self::$objects_loaded_list[$local_hash_key] = $object;
 
     return $object;
+  }
+
+  public function id(): ?int
+  {
+    return $this->attributes['id'] ?? null;
+  }
+
+  public static function GetLocalCache()
+  {
+    return self::$objects_loaded_list;
   }
 
   /**
@@ -140,7 +133,7 @@ class ORM extends Model
    */
   public static function loadByOrDie(?string $value, string $field = 'id', bool $relation = false)
   {
-    if (!$object = self::loadBy($value, $field, $relation))
+    if(!$object = self::loadBy($value, $field, $relation))
     {
       abort(response('Object ' . self::getTableName() . ' not loaded:"' . $value . '" by ' . $field, 500));
     }
@@ -153,9 +146,9 @@ class ORM extends Model
     $list = Cache::get(static::getTableName()) ?: array();
     $value = $this->attributes['id'];
 
-    foreach ($list as $key => $item)
+    foreach($list as $key => $item)
     {
-      if ($value == $item)
+      if($value == $item)
       {
         unset($list[$key]);
       }
@@ -182,11 +175,6 @@ class ORM extends Model
     return (static::getTableName() . '_' . $this->attributes['id']);
   }
 
-  public function id(): ?int
-  {
-    return $this->attributes['id'] ?? null;
-  }
-
   /**
    * Reload with flush cache
    *
@@ -195,6 +183,7 @@ class ORM extends Model
   public function reload()
   {
     $this->self_flush();
+
     return self::loadBy($this->id());
   }
 
@@ -202,23 +191,23 @@ class ORM extends Model
   public $timestamps = false;
 
 
-  public function save_mr(bool $skipAffectedCache = true): ?int
+  public function save_mr(bool $flushAffectedCaches = true): ?int
   {
-    if (method_exists($this, 'before_save'))
+    if(method_exists($this, 'before_save'))
     {
       $this->before_save();
     }
 
     $this->save();
 
-    if (method_exists($this, 'after_save'))
+    if(method_exists($this, 'after_save'))
     {
       $this->after_save();
     }
 
-    if ($skipAffectedCache && method_exists($this, 'flush'))
+    if($flushAffectedCaches && method_exists($this, 'flushAffectedCaches'))
     {
-      $this->flush();
+      $this->flushAffectedCaches();
     }
 
     $this->self_flush();
@@ -248,7 +237,7 @@ class ORM extends Model
 
   public function delete_mr(bool $skipAffectedCache = true): bool
   {
-    if (method_exists($this, 'before_delete'))
+    if(method_exists($this, 'before_delete'))
     {
       $this->before_delete();
     }
@@ -257,7 +246,7 @@ class ORM extends Model
 
     $this->self_flush();
 
-    if ($skipAffectedCache && method_exists($this, 'after_delete'))
+    if($skipAffectedCache && method_exists($this, 'after_delete'))
     {
       $this->after_delete();
     }
