@@ -46,7 +46,7 @@ class ORM extends Model
   /**
    * Load object (get last result)
    *
-   * @param string $value
+   * @param string|null $value
    * @param string $field
    * @param bool $relation // Догрузить связи
    * @return static|object|null
