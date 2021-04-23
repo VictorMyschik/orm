@@ -33,6 +33,7 @@ class ORM extends Model
    * @param int $id
    * @param string $table
    * @param callable $object
+   * @return mixed
    */
   private static function GetCachedObject(int $id, string $table, callable $object)
   {
