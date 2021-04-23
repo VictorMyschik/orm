@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class ORM extends Model
 {
-  protected $id = 0;
+  protected int $id = 0;
 
   public static function getTableName(): string
   {
@@ -25,7 +25,7 @@ class ORM extends Model
     return with(new static)->within;
   }
 
-  public static $objects_loaded_list = array();
+  public static array $objects_loaded_list = array();
 
   /**
    * Get object from cache by id or call
