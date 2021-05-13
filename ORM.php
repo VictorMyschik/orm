@@ -2,9 +2,12 @@
 
 namespace App\Models\ORM;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
 
 class ORM extends Model
 {
@@ -54,8 +57,6 @@ class ORM extends Model
    */
   public static function loadBy(?string $value, string $field = 'id', bool $relation = false): ?object
   {
-    $result = null;
-
     if(!$value)
     {
       return null;
@@ -194,6 +195,8 @@ class ORM extends Model
 
   public function save_mr(bool $flushAffectedCaches = true): ?int
   {
+    $this->mrGuard();
+
     if(method_exists($this, 'before_save'))
     {
       $this->before_save();
@@ -238,6 +241,8 @@ class ORM extends Model
 
   public function delete_mr(bool $skipAffectedCache = true): bool
   {
+    $this->mrGuard();
+
     if(method_exists($this, 'before_delete'))
     {
       $this->before_delete();
@@ -253,5 +258,17 @@ class ORM extends Model
     }
 
     return true;
+  }
+
+  private function mrGuard()
+  {
+    /** @var User $user */
+    if($user = Auth::user())
+    {
+      if(!$user->can('edit'))
+      {
+        abort(Response::HTTP_FORBIDDEN);
+      }
+    }
   }
 }
