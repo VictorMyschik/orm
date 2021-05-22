@@ -4,7 +4,6 @@ namespace App\Models\ORM;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
@@ -137,7 +136,10 @@ class ORM extends Model
   {
     if(!$object = self::loadBy($value, $field, $relation))
     {
-      abort(response('Object ' . self::getTableName() . ' not loaded:"' . $value . '" by ' . $field, 500));
+      abort(
+        Response::HTTP_INTERNAL_SERVER_ERROR,
+        'Object ' . self::getTableName() . ' not loaded:"' . $value . '" by ' . $field
+      );
     }
 
     return $object;
