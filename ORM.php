@@ -75,6 +75,7 @@ class ORM extends Model
     // If field 'id' -> can save in cache
     if($field == 'id')
     {
+      abort_if(!is_numeric($value), Response::HTTP_INTERNAL_SERVER_ERROR, 'Bed request to DB');
       $object = $class_name::find($value);
     }
     else
