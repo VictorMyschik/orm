@@ -49,26 +49,29 @@ class ORM extends Model
   /**
    * local cache
    *
-   * @param string $class_name
-   * @param string $field
-   * @param string $value
+   * @param int $value
    * @return object|null
    */
-  private static function getLocalCachedObject(string $class_name, string $field, string $value): ?object
+  private static function getLocalCachedObject(int $value): ?object
   {
-    $key = self::getCacheKey($class_name, $field, $value);
+    $key = self::getCacheKey($value);
 
     return self::$objects_loaded_list[$key] ?? null;
   }
 
-  private static function setLocalCacheObject($object, string $class_name, string $field, string $value): void
+  private static function setLocalCacheObject($object, string $value): void
   {
-    self::$objects_loaded_list[self::getCacheKey($class_name, $field, $value)] = $object;
+    self::$objects_loaded_list[self::getCacheKey($value)] = $object;
   }
 
-  private static function getCacheKey(string $class_name, string $field, string $value): string
+  private static function getCacheKey(int $value): string
   {
-    return hash('crc32', $class_name . '_' . $field . '_' . $value);
+    return hash('crc32', static::class . '_' . $value);
+  }
+
+  private static function deleteLocalCachedObject(int $id)
+  {
+    unset(self::$objects_loaded_list[self::getCacheKey($id)]);
   }
 
   /**
@@ -76,10 +79,9 @@ class ORM extends Model
    *
    * @param string|null $value
    * @param string $field
-   * @param bool $relation // Догрузить связи
    * @return object|null
    */
-  public static function loadBy(?string $value, string $field = 'id', bool $relation = false): ?object
+  public static function loadBy(?string $value, string $field = 'id'): ?object
   {
     if(!$value)
     {
@@ -89,16 +91,19 @@ class ORM extends Model
     $object = null;
     $class_name = static::class;
 
-    if($cachedObject = self::getLocalCachedObject($class_name, $field, $value))
-    {
-      return $cachedObject;
-    }
-
     // If field 'id' -> can save in cache
     if($field == 'id')
     {
       abort_if(!is_numeric($value), Response::HTTP_INTERNAL_SERVER_ERROR, 'Bed request to DB');
+
+      if($cachedObject = self::getLocalCachedObject($value))
+      {
+        return $cachedObject;
+      }
+
       $object = $class_name::find($value);
+
+      self::setLocalCacheObject($object, $value);
     }
     else
     {
@@ -131,8 +136,6 @@ class ORM extends Model
         }
       }
     }
-
-    self::setLocalCacheObject($object, $class_name, $field, $value);
 
     return $object;
   }
@@ -200,7 +203,6 @@ class ORM extends Model
   /**
    * Reload with flush cache
    *
-   * @return ORM|object|null
    */
   public function reload()
   {
@@ -268,7 +270,10 @@ class ORM extends Model
       $this->before_delete();
     }
 
-    $result = $this->delete();
+    $results = $this->delete();
+
+    // Delete from local cache
+    self::deleteLocalCachedObject($this->id());
 
     $this->self_flush();
 
