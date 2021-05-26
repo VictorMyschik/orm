@@ -47,12 +47,37 @@ class ORM extends Model
   }
 
   /**
+   * local cache
+   *
+   * @param string $class_name
+   * @param string $field
+   * @param string $value
+   * @return object|null
+   */
+  private static function getLocalCachedObject(string $class_name, string $field, string $value): ?object
+  {
+    $key = self::getCacheKey($class_name, $field, $value);
+
+    return self::$objects_loaded_list[$key] ?? null;
+  }
+
+  private static function setLocalCacheObject($object, string $class_name, string $field, string $value): void
+  {
+    self::$objects_loaded_list[self::getCacheKey($class_name, $field, $value)] = $object;
+  }
+
+  private static function getCacheKey(string $class_name, string $field, string $value): string
+  {
+    return hash('crc32', $class_name . '_' . $field . '_' . $value);
+  }
+
+  /**
    * Load object (get last result)
    *
    * @param string|null $value
    * @param string $field
    * @param bool $relation // Догрузить связи
-   * @return static|object|null
+   * @return object|null
    */
   public static function loadBy(?string $value, string $field = 'id', bool $relation = false): ?object
   {
@@ -64,12 +89,9 @@ class ORM extends Model
     $object = null;
     $class_name = static::class;
 
-    // local cache
-    $local_hash_key = hash('crc32', $class_name . '_' . $field . '_' . $value);
-
-    if(isset(self::$objects_loaded_list[$local_hash_key]))
+    if($cachedObject = self::getLocalCachedObject($class_name, $field, $value))
     {
-      return self::$objects_loaded_list[$local_hash_key];
+      return $cachedObject;
     }
 
     // If field 'id' -> can save in cache
@@ -110,7 +132,7 @@ class ORM extends Model
       }
     }
 
-    self::$objects_loaded_list[$local_hash_key] = $object;
+    self::setLocalCacheObject($object, $class_name, $field, $value);
 
     return $object;
   }
@@ -118,11 +140,6 @@ class ORM extends Model
   public function id(): ?int
   {
     return $this->attributes['id'] ?? null;
-  }
-
-  public static function GetLocalCache()
-  {
-    return self::$objects_loaded_list;
   }
 
   /**
@@ -251,7 +268,7 @@ class ORM extends Model
       $this->before_delete();
     }
 
-    $this->delete();
+    $result = $this->delete();
 
     $this->self_flush();
 
