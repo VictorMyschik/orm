@@ -149,12 +149,11 @@ class ORM extends Model
    *
    * @param string|null $value
    * @param string $field
-   * @param bool $relation
    * @return static|object
    */
-  public static function loadByOrDie(?string $value, string $field = 'id', bool $relation = false)
+  public static function loadByOrDie(?string $value, string $field = 'id')
   {
-    if(!$object = self::loadBy($value, $field, $relation))
+    if(!$object = self::loadBy($value, $field))
     {
       abort(
         Response::HTTP_INTERNAL_SERVER_ERROR,
