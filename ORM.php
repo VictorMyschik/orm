@@ -235,7 +235,10 @@ class ORM extends Model
       $this->flushAffectedCaches();
     }
 
-    $this->self_flush();
+    if(method_exists($this, 'self_flush'))
+    {
+      $this->self_flush();
+    }
 
     return $this->id();
   }
