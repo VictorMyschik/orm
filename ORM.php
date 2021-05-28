@@ -2,7 +2,6 @@
 
 namespace App\Models\ORM;
 
-use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -215,7 +214,7 @@ class ORM extends Model
 
   public function save_mr(bool $flushAffectedCaches = true): ?int
   {
-    User::canEdit();
+    //User::canEdit();
 
     if(method_exists($this, 'before_save'))
     {
@@ -264,7 +263,7 @@ class ORM extends Model
 
   public function delete_mr(bool $skipAffectedCache = true): bool
   {
-    User::canEdit();
+    //User::canEdit();
 
     if(method_exists($this, 'before_delete'))
     {
