@@ -115,7 +115,7 @@ class ORM extends Model
       }
       else
       {
-        if($result_data = DB::table(self::getTableName())->select(['*'])->where($field, $value)->first())
+        if($result_data = DB::table(self::getTableName())->where($field, $value)->first())
         {
           foreach($result_data as $key => $value)
           {
