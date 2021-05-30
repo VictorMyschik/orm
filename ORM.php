@@ -78,6 +78,7 @@ class ORM extends Model
    *
    * @param string|null $value
    * @param string $field
+   * @return static|object|null
    */
   public static function loadBy(?string $value, string $field = 'id')
   {
