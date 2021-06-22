@@ -179,6 +179,8 @@ class ORM extends Model
 
     self::rewrite(static::getTableName(), $list);
 
+    self::deleteLocalCachedObject($value);
+
     Cache::forget($this->GetCachedKey());
   }
 
