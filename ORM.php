@@ -91,7 +91,7 @@ class ORM extends Model
     $class_name = static::class;
 
     // If field 'id' -> can save in cache
-    if($field == 'id')
+    if($field === 'id')
     {
       abort_if(!is_numeric($value), Response::HTTP_INTERNAL_SERVER_ERROR, 'Bed request to DB');
 
@@ -171,7 +171,7 @@ class ORM extends Model
 
     foreach($list as $key => $item)
     {
-      if($value == $item)
+      if($value === $item)
       {
         unset($list[$key]);
       }
