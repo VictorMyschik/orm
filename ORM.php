@@ -88,30 +88,30 @@ class ORM extends Model
     }
 
     $object = null;
-    $class_name = static::class;
+    $className = static::class;
 
     // If field 'id' -> can save in cache
     if($field === 'id')
     {
-      abort_if(!is_numeric($value), Response::HTTP_INTERNAL_SERVER_ERROR, 'Bed request to DB');
+      abort_if(!is_numeric($value), Response::HTTP_INTERNAL_SERVER_ERROR, 'ORM. Bed request to DB.');
 
       if($cachedObject = self::getLocalCachedObject($value))
       {
         return $cachedObject;
       }
 
-      $object = $class_name::find($value);
+      $object = $className::find($value);
 
       self::setLocalCacheObject($object, $value);
     }
     else
     {
-      $redis_keys_list = Cache::get($class_name::getTableName()) ?: array();
-      $redis_key_hash = hash('crc32', $field . '_' . $value);
+      $redisKeysList = Cache::get($className::getTableName()) ?: array();
+      $redisKeyHash = hash('crc32', $field . '_' . $value);
 
-      if(isset($redis_keys_list[$redis_key_hash]))
+      if(isset($redisKeysList[$redisKeyHash]))
       {
-        $object = self::loadBy($redis_keys_list[$redis_key_hash]);// загрузка по id
+        $object = self::loadBy($redisKeysList[$redisKeyHash]);// загрузка по id
       }
       else
       {
@@ -125,13 +125,13 @@ class ORM extends Model
             }
           }
 
-          $object = new $class_name();
+          $object = new $className();
           $object->exists = true;
           $object->attributes = $properties;
           $object->original = $properties;
 
-          $redis_keys_list[$redis_key_hash] = $object->id();
-          self::rewrite(self::getTableName(), $redis_keys_list);
+          $redisKeysList[$redisKeyHash] = $object->id();
+          self::rewrite(self::getTableName(), $redisKeysList);
         }
       }
     }
@@ -219,16 +219,16 @@ class ORM extends Model
   {
     //User::canEdit();
 
-    if(method_exists($this, 'before_save'))
+    if(method_exists($this, 'beforeSave'))
     {
-      $this->before_save();
+      $this->beforeSave();
     }
 
     $this->save();
 
-    if(method_exists($this, 'after_save'))
+    if(method_exists($this, 'afterSave'))
     {
-      $this->after_save();
+      $this->afterSave();
     }
 
     if($flushAffectedCaches && method_exists($this, 'flushAffectedCaches'))
