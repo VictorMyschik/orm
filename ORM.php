@@ -82,8 +82,7 @@ class ORM extends Model
    */
   public static function loadBy(?string $value, string $field = 'id')
   {
-    if(!$value)
-    {
+    if(!$value) {
       return null;
     }
 
@@ -91,12 +90,10 @@ class ORM extends Model
     $className = static::class;
 
     // If field 'id' -> can save in cache
-    if($field === 'id')
-    {
+    if($field === 'id') {
       abort_if(!is_numeric($value), Response::HTTP_INTERNAL_SERVER_ERROR, 'ORM. Bed request to DB.');
 
-      if($cachedObject = self::getLocalCachedObject($value))
-      {
+      if($cachedObject = self::getLocalCachedObject($value)) {
         return $cachedObject;
       }
 
@@ -104,23 +101,17 @@ class ORM extends Model
 
       self::setLocalCacheObject($object, $value);
     }
-    else
-    {
+    else {
       $redisKeysList = Cache::get($className::getTableName()) ?: array();
       $redisKeyHash = hash('crc32', $field . '_' . $value);
 
-      if(isset($redisKeysList[$redisKeyHash]))
-      {
+      if(isset($redisKeysList[$redisKeyHash])) {
         $object = self::loadBy($redisKeysList[$redisKeyHash]);// загрузка по id
       }
-      else
-      {
-        if($result_data = DB::table(self::getTableName())->where($field, $value)->first())
-        {
-          foreach($result_data as $key => $value)
-          {
-            if(!is_null($value))
-            {
+      else {
+        if($result_data = DB::table(self::getTableName())->where($field, $value)->first()) {
+          foreach($result_data as $key => $value) {
+            if(!is_null($value)) {
               $properties[$key] = $value;
             }
           }
@@ -153,13 +144,13 @@ class ORM extends Model
    */
   public static function loadByOrDie(?string $value, string $field = 'id')
   {
-    if(!$object = self::loadBy($value, $field))
-    {
-      abort(
-        Response::HTTP_INTERNAL_SERVER_ERROR,
-        'Object ' . self::getTableName() . ' not loaded:"' . $value . '" by ' . $field
-      );
-    }
+    $object = self::loadBy($value, $field);
+
+    abort_if(
+      !$object,
+      Response::HTTP_INTERNAL_SERVER_ERROR,
+      'Object ' . self::getTableName() . ' not loaded:"' . $value . '" by ' . $field
+    );
 
     return $object;
   }
@@ -169,10 +160,8 @@ class ORM extends Model
     $list = Cache::get(static::getTableName()) ?: array();
     $value = $this->attributes['id'];
 
-    foreach($list as $key => $item)
-    {
-      if($value === $item)
-      {
+    foreach($list as $key => $item) {
+      if($value === $item) {
         unset($list[$key]);
       }
     }
@@ -217,27 +206,21 @@ class ORM extends Model
 
   public function save_mr(bool $flushAffectedCaches = true): ?int
   {
-    //User::canEdit();
-
-    if(method_exists($this, 'beforeSave'))
-    {
+    if(method_exists($this, 'beforeSave')) {
       $this->beforeSave();
     }
 
     $this->save();
 
-    if(method_exists($this, 'afterSave'))
-    {
+    if(method_exists($this, 'afterSave')) {
       $this->afterSave();
     }
 
-    if($flushAffectedCaches && method_exists($this, 'flushAffectedCaches'))
-    {
+    if($flushAffectedCaches && method_exists($this, 'flushAffectedCaches')) {
       $this->flushAffectedCaches();
     }
 
-    if(method_exists($this, 'self_flush'))
-    {
+    if(method_exists($this, 'self_flush')) {
       $this->self_flush();
     }
 
@@ -268,8 +251,7 @@ class ORM extends Model
   {
     //User::canEdit();
 
-    if(method_exists($this, 'before_delete'))
-    {
+    if(method_exists($this, 'before_delete')) {
       $this->before_delete();
     }
 
@@ -280,8 +262,7 @@ class ORM extends Model
 
     $this->self_flush();
 
-    if($skipAffectedCache && method_exists($this, 'after_delete'))
-    {
+    if($skipAffectedCache && method_exists($this, 'after_delete')) {
       $this->after_delete();
     }
 
