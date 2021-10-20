@@ -155,7 +155,7 @@ class ORM extends Model
     return $object;
   }
 
-  public function self_flush()
+  public function selfFlush()
   {
     $list = Cache::get(static::getTableName()) ?: array();
     $value = $this->attributes['id'];
@@ -195,7 +195,7 @@ class ORM extends Model
    */
   public function reload()
   {
-    $this->self_flush();
+    $this->selfFlush();
 
     return self::loadBy($this->id());
   }
@@ -220,8 +220,8 @@ class ORM extends Model
       $this->flushAffectedCaches();
     }
 
-    if(method_exists($this, 'self_flush')) {
-      $this->self_flush();
+    if(method_exists($this, 'selfFlush')) {
+      $this->selfFlush();
     }
 
     return $this->id();
@@ -260,7 +260,7 @@ class ORM extends Model
     // Delete from local cache
     self::deleteLocalCachedObject($this->id());
 
-    $this->self_flush();
+    $this->selfFlush();
 
     if($skipAffectedCache && method_exists($this, 'after_delete')) {
       $this->after_delete();
