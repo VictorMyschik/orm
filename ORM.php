@@ -3,9 +3,6 @@
 namespace App\Models\ORM;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use JetBrains\PhpStorm\Pure;
 use Symfony\Component\HttpFoundation\Response;
 
 class ORM extends Model
@@ -18,110 +15,18 @@ class ORM extends Model
   }
 
   /**
-   * Fields relations
-   *
-   * @return mixed
-   */
-  public static function getMrRelation()
-  {
-    return with(new static)->within;
-  }
-
-  public static array $objects_loaded_list = array();
-
-  /**
-   * Get object from cache by id or call
-   *
-   * @param int $id
-   * @param string $table
-   * @param callable $object
-   * @return mixed
-   */
-  private static function GetCachedObject(int $id, string $table, callable $object)
-  {
-    $cache_key = $table . '_' . $id;
-
-    // return Cache::remember($cache_key, 300, function () use ($object) {
-    return $object();
-    //});
-  }
-
-  #[Pure]
-  private static function getLocalCachedObject(int $value): ?object
-  {
-    $key = self::getCacheKey($value);
-
-    return self::$objects_loaded_list[$key] ?? null;
-  }
-
-  private static function setLocalCacheObject($object, string $value): void
-  {
-    self::$objects_loaded_list[self::getCacheKey($value)] = $object;
-  }
-
-  private static function getCacheKey(int $value): string
-  {
-    return hash('crc32', static::class . '_' . $value);
-  }
-
-  private static function deleteLocalCachedObject(int $id): void
-  {
-    unset(self::$objects_loaded_list[self::getCacheKey($id)]);
-  }
-
-  /**
    * Load object (get last result)
    *
-   * @param string|null $value
-   * @param string $field
    * @return static|object|null
    */
-  public static function loadBy(?string $value, string $field = 'id')
+  public static function loadBy(?int $value)
   {
     if(!$value) {
       return null;
     }
 
-    $object = null;
     $className = static::class;
-
-    // If field 'id' -> can save in cache
-    if($field === 'id') {
-      abort_if(!is_numeric($value), Response::HTTP_INTERNAL_SERVER_ERROR, 'ORM. Bed request to DB.');
-
-      if($cachedObject = self::getLocalCachedObject($value)) {
-        return $cachedObject;
-      }
-
-      $object = $className::find($value);
-
-      self::setLocalCacheObject($object, $value);
-    }
-    else {
-      $redisKeysList = Cache::get($className::getTableName()) ?: array();
-      $redisKeyHash = hash('crc32', $field . '_' . $value);
-
-      if(isset($redisKeysList[$redisKeyHash])) {
-        $object = self::loadBy($redisKeysList[$redisKeyHash]);// загрузка по id
-      }
-      else {
-        if($result_data = DB::table(self::getTableName())->where($field, $value)->first()) {
-          foreach($result_data as $key => $value) {
-            if(!is_null($value)) {
-              $properties[$key] = $value;
-            }
-          }
-
-          $object = new $className();
-          $object->exists = true;
-          $object->attributes = $properties;
-          $object->original = $properties;
-
-          $redisKeysList[$redisKeyHash] = $object->id();
-          self::rewrite(self::getTableName(), $redisKeysList);
-        }
-      }
-    }
+    $object = $className::find($value);
 
     return $object;
   }
@@ -131,69 +36,14 @@ class ORM extends Model
     return $this->attributes['id'] ?? null;
   }
 
-  /**
-   * Загрузи или умри
-   *
-   * @param string|null $value
-   * @param string $field
-   * @return static|object
-   */
-  public static function loadByOrDie(?string $value, string $field = 'id')
+  public static function loadByOrDie(?string $value)
   {
-    $object = self::loadBy($value, $field);
+    $object = self::loadBy($value);
 
-    abort_if(
-      !$object,
-      Response::HTTP_INTERNAL_SERVER_ERROR,
-      'Object ' . self::getTableName() . ' not loaded:"' . $value . '" by ' . $field
-    );
+    $msg = 'Object ' . self::getTableName() . ' not loaded: id' . $value;
+    abort_if(!$object, Response::HTTP_INTERNAL_SERVER_ERROR, $msg);
 
     return $object;
-  }
-
-  public function selfFlush()
-  {
-    $list = Cache::get(static::getTableName()) ?: array();
-    $value = $this->attributes['id'];
-
-    foreach($list as $key => $item) {
-      if($value === $item) {
-        unset($list[$key]);
-      }
-    }
-
-    self::rewrite(static::getTableName(), $list);
-
-    self::deleteLocalCachedObject($value);
-
-    Cache::forget($this->GetCachedKey());
-  }
-
-  private static function rewrite(string $table_name, array $list): void
-  {
-    Cache::forget($table_name);
-    Cache::add($table_name, $list);
-  }
-
-  /**
-   * Object name for identify in a cache
-   *
-   * @return string
-   */
-  protected function GetCachedKey(): string
-  {
-    return (static::getTableName() . '_' . $this->attributes['id']);
-  }
-
-  /**
-   * Reload with flush cache
-   *
-   */
-  public function reload()
-  {
-    $this->selfFlush();
-
-    return self::loadBy($this->id());
   }
 
   // Disable Laravel time fields
@@ -223,43 +73,17 @@ class ORM extends Model
     return $this->id();
   }
 
-  /**
-   * Has this object in cache or no
-   *
-   * @return bool
-   */
-  public function IsCached(): bool
-  {
-    return Cache::has($this->GetCachedKey());
-  }
-
-  /**
-   * Get model from cache, can be different of original
-   *
-   * @return object|null
-   */
-  public function GetCachedModel(): ?object
-  {
-    return Cache::get($this->GetCachedKey());
-  }
-
   public function delete_mr(bool $skipAffectedCache = true): bool
   {
-    //User::canEdit();
-
-    if(method_exists($this, 'before_delete')) {
-      $this->before_delete();
+    if(method_exists($this, 'beforeDelete')) {
+      $this->beforeDelete();
     }
 
     $results = $this->delete();
+    abort_if(!$results, Response::HTTP_INTERNAL_SERVER_ERROR, 'Object was not deleted');
 
-    // Delete from local cache
-    self::deleteLocalCachedObject($this->id());
-
-    $this->selfFlush();
-
-    if($skipAffectedCache && method_exists($this, 'after_delete')) {
-      $this->after_delete();
+    if($skipAffectedCache && method_exists($this, 'afterDelete')) {
+      $this->afterDelete();
     }
 
     return true;
