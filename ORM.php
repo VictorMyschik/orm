@@ -5,6 +5,7 @@ namespace App\Models\ORM;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use JetBrains\PhpStorm\Pure;
 use Symfony\Component\HttpFoundation\Response;
 
 class ORM extends Model
@@ -45,12 +46,7 @@ class ORM extends Model
     //});
   }
 
-  /**
-   * local cache
-   *
-   * @param int $value
-   * @return object|null
-   */
+  #[Pure]
   private static function getLocalCachedObject(int $value): ?object
   {
     $key = self::getCacheKey($value);
@@ -68,7 +64,7 @@ class ORM extends Model
     return hash('crc32', static::class . '_' . $value);
   }
 
-  private static function deleteLocalCachedObject(int $id)
+  private static function deleteLocalCachedObject(int $id): void
   {
     unset(self::$objects_loaded_list[self::getCacheKey($id)]);
   }
