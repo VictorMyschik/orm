@@ -66,7 +66,7 @@ class ORM extends Model
       $this->flushAffectedCaches();
     }
 
-    if(method_exists($this, 'selfFlush')) {
+    if(method_exists($this, 'flush')) {
       $this->flush();
     }
 
