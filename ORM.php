@@ -50,7 +50,7 @@ class ORM extends Model
   public $timestamps = false;
 
 
-  public function save_mr(bool $flushAffectedCaches = true): ?int
+  public function save_mr(bool $skipFlushAffectedCaches = false): ?int
   {
     if(method_exists($this, 'beforeSave')) {
       $this->beforeSave();
@@ -62,12 +62,12 @@ class ORM extends Model
       $this->afterSave();
     }
 
-    if($flushAffectedCaches && method_exists($this, 'flushAffectedCaches')) {
+    if($skipFlushAffectedCaches && method_exists($this, 'flushAffectedCaches')) {
       $this->flushAffectedCaches();
     }
 
     if(method_exists($this, 'selfFlush')) {
-      $this->selfFlush();
+      $this->flush();
     }
 
     return $this->id();
