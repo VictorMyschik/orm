@@ -12,7 +12,7 @@ class ORM extends Model
 
   public static function getTableName(): string
   {
-    return with(new static)->getTable();
+    return (new static)->getTable();
   }
 
   public static function loadBy(?int $value): ?static
